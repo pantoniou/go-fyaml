@@ -409,25 +409,32 @@ func (s *SequenceState) CollectionEnd(event *Event, path *Path) error {
            return errors.New(fmt.Sprintf("%v: unsettable sequence end interface", path))
         }
 
-        var itemType reflect.Type
+        var itemType, thisItemType reflect.Type
         uniformItemTypes := false
 
         length := s.rv.Len()
         for idx := 0; idx < length; idx++ {
             item := s.rv.Index(idx)
+
+            if item.IsValid() && !item.IsNil() {
+                thisItemType = item.Elem().Type()
+            } else {
+                thisItemType = nil
+            }
+
             if idx == 0 {
-                itemType = item.Elem().Type()
+                itemType = thisItemType
                 uniformItemTypes = true
                 continue
             }
-            if item.Elem().Type() != itemType {
+            if thisItemType != itemType {
                 uniformItemTypes = false
                 break
             }
         }
 
-        // if the uniform type is the generic sequence item type
-        if uniformItemTypes && itemType == genericSeqType {
+        // if the uniform type is the generic (or nil) sequence item type
+        if uniformItemTypes && (itemType == genericSeqType || itemType == nil) {
             uniformItemTypes = false
         }
 
@@ -821,22 +828,34 @@ func (s *MappingState) CollectionEnd(event *Event, path *Path) error {
         // we will try to restrict the types of the keys/values
         // converting to something like map[string]string
 
-        var keyType, valueType reflect.Type
+        var keyType, valueType, thisKeyType, thisValueType reflect.Type
         uniformKeyTypes, uniformValueTypes := false, false
 
+        keyType = nil
+        valueType = nil
         for idx, key := range s.rv.MapKeys() {
+            if key.IsValid() && !key.IsNil() {
+                thisKeyType = key.Elem().Type()
+            } else {
+                thisKeyType = nil
+            }
             value := s.rv.MapIndex(key)
+            if value.IsValid() && !value.IsNil() {
+                thisValueType = value.Elem().Type()
+            } else {
+                thisValueType = nil
+            }
             if idx == 0 {
-                keyType = key.Elem().Type()
-                valueType = value.Elem().Type()
+                keyType = thisKeyType
+                valueType = thisValueType
                 uniformKeyTypes = true
                 uniformValueTypes = true
                 continue
             }
-            if uniformKeyTypes && key.Elem().Type() != keyType {
+            if uniformKeyTypes && thisKeyType != keyType {
                 uniformKeyTypes = false
             }
-            if uniformValueTypes && value.Elem().Type() != valueType {
+            if uniformValueTypes && thisValueType != valueType {
                 uniformValueTypes = false
             }
 
@@ -846,12 +865,12 @@ func (s *MappingState) CollectionEnd(event *Event, path *Path) error {
             }
         }
 
-        // if the types are uniform but generic, do not bother
-        if uniformKeyTypes && keyType == genericIfaceType {
+        // if the types are uniform but generic (or null), do not bother
+        if uniformKeyTypes && (keyType == genericIfaceType || keyType == nil) {
             uniformKeyTypes = false
         }
 
-        if uniformValueTypes && keyType == genericIfaceType {
+        if uniformValueTypes && (valueType == genericIfaceType || valueType == nil) {
             uniformValueTypes = false
         }
 
