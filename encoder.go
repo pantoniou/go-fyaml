@@ -21,6 +21,7 @@ type Encoder struct {
     sc *StructCache         // the cache of the decoded structs
     root interface{}
     err error               // error in case of abnormal termination
+    jsonOutput bool         // is the output json
 }
 
 // just forward to the internal cmem tracker
@@ -59,6 +60,7 @@ func NewEncoder(opts...interface{}) (*Encoder, error) {
     }
 
     enc.sc = NewStructCache(enc)
+    enc.jsonOutput = o.OutputMode == "json" || o.OutputMode == "json-oneline"
 
     return enc, nil
 }

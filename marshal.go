@@ -102,7 +102,13 @@ func (enc *Encoder) emitMarshalBool(e *Emitter, rv reflect.Value) error {
 
 func (enc *Encoder) emitMarshalNull(e *Emitter, rv reflect.Value) error {
     // XXX schema null
-    return e.EmitEvent(Scalar, Plain, "~", "", "")
+    var str string
+    if !enc.jsonOutput {
+        str = "~"       // by default emit ~
+    } else {
+        str = "null"    // or the JSON null
+    }
+    return e.EmitEvent(Scalar, Plain, str, "", "")
 }
 
 func (enc *Encoder) emitMarshal(e *Emitter, rv reflect.Value) error {
